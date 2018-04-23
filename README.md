@@ -1,2 +1,2 @@
 # MaximumIntensityProjection
-Maximum Intensity Projection (MIP) 
+Maximum Intensity Projection (MIP)
