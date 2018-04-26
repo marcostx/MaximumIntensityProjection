@@ -12,15 +12,15 @@ int main(int argc, char *argv[])
     float tx, ty, tz;
     tx = atof(argv[3]);
     ty = atof(argv[4]);
-    tz = atof(argv[5]);
-    Image *img = iftReadExtImage(argv[1]);
-    Image *output = NULL;
+    //tz = atof(argv[5]);
+    iftImage *img = iftReadExtImage(argv[1]);
+    iftImage *output = NULL;
 
-    output = MaximumIntensityProjection(img, tx, ty, tz);
+    output = MaximumIntensityProjection(img, tx, ty);
     //sprintf(buffer, "data/%.1f%.1f%.1f%s", tx, ty, tz, argv[2]);
 
     //WriteImageP2(output, buffer);
-    DestroyImage(img);
-    DestroyImage(output);
+    iftDestroyImage(img);
+    iftDestroyImage(output);
     return 0;
 }
