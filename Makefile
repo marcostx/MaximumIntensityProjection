@@ -10,8 +10,8 @@ TSNE_DIR= ./externals/tsne
 
 LIBIFT_INC   = -I ./include
 LIBIFT_LD    = -L ./lib -lift
-LIBSVM_INC   = -I $(LIBSVM_DIR)/include 
-LIBSVM_LD    = -L $(LIBSVM_DIR)/lib -lsvm -lstdc++ 
+LIBSVM_INC   = -I $(LIBSVM_DIR)/include
+LIBSVM_LD    = -L $(LIBSVM_DIR)/lib -lsvm -lstdc++
 LIBCBLAS_INC = -I /usr/local/opt/openblas/include
 LIBCBLAS_LD  = -L /usr/local/opt/openblas/lib -L /lib64/atlas-sse3 -L /usr/lib/atlas-base -llapack -lblas -lcblas
 
@@ -50,13 +50,3 @@ $@.c: $@.c
 
 clean:
 	rm -rf iftTrainForIrisDetection; rm -rf iftDetectIris; rm -rf tmp
-
-
-
-
-
-
-
-
-
-

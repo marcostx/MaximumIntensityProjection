@@ -323,8 +323,6 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 
     Tnorigin = iftMultMatrices(T, Norigin);
 
-
-
     volumeFaces = createVF(img);
 
     for (p = 0; p < output->n; p++)
