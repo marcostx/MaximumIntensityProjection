@@ -73,7 +73,7 @@ int DDA(iftImage *img, iftVoxel p1, iftVoxel pn)
     int n, k;
     //iftVoxel p;
     float px, py;
-    float J=0;
+    float J=0, max=0;
     int Dx,Dy;
     float dx=0,dy=0;
     //iftCreateMatrix* J;
@@ -101,19 +101,19 @@ int DDA(iftImage *img, iftVoxel p1, iftVoxel pn)
     py = p1.y;
 
 
-
-
     for (k = 1; k < n; k++)
     {
         //J+=  (float)LinearInterpolationValue(img, px, py);
         J+=  iftImgVal2D(img, (int)px, (int)py);
+        if (J>max)
+          max=J;
         //J+=  (float)LinearInterpolationValue(img, px, py);
 
         px = px + dx;
         py = py + dy;
     }
 
-    return (int)J;
+    return (int)max;
 }
 
 
@@ -312,14 +312,14 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
     Nu = Nv = diagonal;
     iftImage *output = iftCreateImage(Nu, Nv, 1);
     T  = createTransformationMatrix(img, xtheta, ytheta);
-    iftPrintMatrix(T);
+    //iftPrintMatrix(T);
 
     Norigin =  iftCreateMatrix(1, 4);
     iftMatrixElem(Norigin, 0, 0) = 0;
     iftMatrixElem(Norigin, 0, 1) = 0;
     iftMatrixElem(Norigin, 0, 2) = 0;
     iftMatrixElem(Norigin, 0, 3) = 1;
-    iftPrintMatrix(Norigin);
+    //iftPrintMatrix(Norigin);
 
     Tnorigin = iftMultMatrices(T, Norigin);
 
@@ -327,7 +327,6 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 
     for (p = 0; p < output->n; p++)
     {
-        printf("%d\n",p);
         p1 = pn = -1;
         p0 = GetVoxelCoord(output, p);
         Mtemp = voxelToMatrix(p0);
@@ -335,18 +334,21 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 
         if (ComputeIntersection(Tpo, img, Tnorigin, volumeFaces, &p1, &pn))
         {
+            printf("passou\n");
             v1 = GetVoxelCoord(img, p1);
             vn = GetVoxelCoord(img, pn);
 
             //maxIntensity = IntensityProfile(img, v1, vn);
-            maxIntensity=0;
+            maxIntensity  = DDA(img,v1,vn);
 
             output->val[p] = maxIntensity;
         }
-        else
-            output->val[p] = 0;
+        else{
 
-        iftDestroyMatrix(&Mtemp);
+            output->val[p] = 0;
+        }
+
+        iftDestroyMatrix(&Mtemp); 
         iftDestroyMatrix(&Tpo);
     }
 
@@ -376,10 +378,10 @@ int main(int argc, char *argv[])
     iftImage *output = NULL;
 
     output = MaximumIntensityProjection(img, tx, ty);
-    //sprintf(buffer, "data/%.1f%.1f%.1f%s", tx, ty, tz, argv[2]);
+    sprintf(buffer, "data/%.1f%.1f%s", tx, ty, argv[2]);
 
-    //WriteImageP2(output, buffer);
-    //iftDestroyImage(img);
-    //iftDestroyImage(output);
+    iftWriteImageByExt(output, buffer);
+    iftDestroyImage(&img);
+    iftDestroyImage(&output);
     return 0;
 }
