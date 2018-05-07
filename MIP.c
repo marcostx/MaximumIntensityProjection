@@ -161,11 +161,16 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
 
       if (isValidPoint(img, v))
       {
-          if (*p1 == -1)
+
+          if (*p1 == -1){
               *p1 = GetVoxelIndex(img, v);
-          else if (*p1 != -1)
-              if (*p1 != GetVoxelIndex(img, v))
+          }
+          else if (*p1 != -1){
+              if (*p1 != GetVoxelIndex(img, v)){
                   *pn = GetVoxelIndex(img, v);
+                  printf("ponto valido2\n");
+              }
+          }
       }
 
     }
@@ -188,11 +193,43 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
 
 
 
-int LinearInterpolationValue(iftImage *img, iftVoxel v)
+int LinearInterpolationValue(iftImage *img, float x, float y, float z)
 {
-    //int p[8], i, value;
+    iftVoxel u[8];
+    float dx = 1.0;
+    float dy = 1.0;
+    float dz = 1.0;
+    float  P12, P34, P56, P78;
+    float aux1, aux2;
+    int Pi;
 
-    return 0;
+    if ((int) (x + 1.0) == img->xsize)
+        dx = 0.0;
+    if ((int) (y + 1.0) == img->ysize)
+        dy = 0.0;
+    if ((int) (z + 1.0) == img->zsize)
+        dz = 0.0;
+
+    //closest neighbour in each direction
+    u[0].x = (int)x;        u[0].y = (int)y;          u[0].z = (int)z;
+    u[1].x = (int)(x + dx); u[1].y = (int)y;          u[1].z = (int)z;
+    u[2].x = (int)x;        u[2].y = (int)(y + dy);   u[2].z = (int)z;
+    u[3].x = (int)(x + dx); u[3].y = (int)(y + dy);   u[3].z = (int)z;
+    u[4].x = (int)x;        u[4].y = (int)y;          u[4].z = (int)(z + dz);
+    u[5].x = (int)(x + dx); u[5].y = (int)y;          u[5].z = (int)(z + dz);
+    u[6].x = (int)x;        u[6].y = (int)(y + dy);   u[6].z = (int)(z + dz);
+    u[7].x = (int)(x + dx); u[7].y = (int)(y + dy);   u[7].z = (int)(z + dz);
+
+
+    P12 = (float)iftImgVal2D(img,u[1].x,u[1].y) * (x - u[0].x) + (float)iftImgVal2D(img,u[0].x,u[0].y) * (u[1].x - x);
+    P34 = (float)iftImgVal2D(img,u[3].x,u[3].y) * (x - u[2].x) + (float)iftImgVal2D(img,u[2].x,u[2].y) * (u[3].x - x);
+    P56 = (float)iftImgVal2D(img,u[5].x,u[5].y) * (x - u[4].x) + (float)iftImgVal2D(img,u[4].x,u[4].y) * (u[5].x - x);
+    P78 = (float)iftImgVal2D(img,u[7].x,u[7].y) * (x - u[6].x) + (float)iftImgVal2D(img,u[6].x,u[6].y) * (u[7].x - x);
+    aux1 = P34 *  (y - u[0].y) + P12 * (u[2].y - y);
+    aux2 = P56] * (y - u[0].y) + P78 * (u[2].y - y);
+    Pi  = (int)aux2 * (z - u[0].z) + aux1 * (u[4].z - z);
+
+    return Pi;
 }
 
 iftVolumeFaces* createVF(iftImage* I)
@@ -300,12 +337,12 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
     int p=0;
     int Nu, Nv;
     int p1, pn;
-    float* lineVals;
+    //float* lineVals;
     iftVoxel p0, v1, vn;
     //
     iftVolumeFaces* volumeFaces;
-    iftMatrix *Mt1, *Mt2, *Mrx, *Mry, *Mrz, *Mtemp, *T;
-    iftMatrix *Norigin, *Nend, *Tnorigin, *Tnend, *Tn;
+    iftMatrix *Mtemp, *T;
+    iftMatrix *Norigin, *Tnorigin;
     iftMatrix *Tpo;
 
     diagonal = (int)sqrt((double) (img->xsize * img->xsize) + (img->ysize * img->ysize) + (img->zsize * img->zsize));
@@ -348,7 +385,7 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
             output->val[p] = 0;
         }
 
-        iftDestroyMatrix(&Mtemp); 
+        iftDestroyMatrix(&Mtemp);
         iftDestroyMatrix(&Tpo);
     }
 
@@ -365,7 +402,7 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 int main(int argc, char *argv[])
 {
     //if (argc != 6)
-    //    Error("Run: ./main <filename> <output> <xtheta> <ytheta> <ztheta>", "main");
+    //    Error("Run: ./main <filename> <output> <xtheta> <ytheta> , "main");
 
     char buffer[512];
 
@@ -375,6 +412,7 @@ int main(int argc, char *argv[])
     //tz = atof(argv[5]);
     char *imgFileName = iftCopyString(argv[1]);
     iftImage *img = iftReadImageByExt(imgFileName);
+    iftWriteImageByExt(img, "test.png");
     iftImage *output = NULL;
 
     output = MaximumIntensityProjection(img, tx, ty);
