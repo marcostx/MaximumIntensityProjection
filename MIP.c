@@ -1,11 +1,6 @@
 #include <stdio.h>
 #include "ift.h"
 
-#define AXIS_X 0
-#define AXIS_Y 1
-#define AXIS_Z 2
-#define AXIS_H 3
-
 #define GetXCoord(s,p) (((p) % (((s)->xsize)*((s)->ysize))) % (s)->xsize)
 #define GetYCoord(s,p) (((p) % (((s)->xsize)*((s)->ysize))) / (s)->xsize)
 #define GetZCoord(s,p) ((p) / (((s)->xsize)*((s)->ysize)))
@@ -121,7 +116,7 @@ int DDA(iftImage *img, iftVoxel p1, iftVoxel pn)
         //printf("debug\n");
         //J+=  (float)LinearInterpolationValue(img, px, py);
         //J+=  iftImgVal2D(img, (int)px, (int)py);
-        J+= VoxelValue(img,p);
+        J= VoxelValue(img,p);
         
         if (J>max)
           max=J;
@@ -148,67 +143,86 @@ int isValidPoint(iftImage *img, iftVoxel u)
     }
 }
 
+iftVector columnVectorMatrixToVector(iftMatrix *m)
+{
+    iftVector v = {.x = iftMatrixElem(m, 0, 0), .y = iftMatrixElem(m, 0, 1), .z = iftMatrixElem(m, 0, 2)};
+    v.x = iftAlmostZero(v.x) ? 0.0 : v.x;
+    v.y = iftAlmostZero(v.y) ? 0.0 : v.y;
+    v.z = iftAlmostZero(v.z) ? 0.0 : v.z;
+
+    return v;
+}
+
 
 int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeFaces *vf, iftVoxel *p1, iftVoxel *pn)
 {
 
     float lambda[6] = { -1};
+    float min=9999999.0, max=0.0;
     int i;
     p1->x=pn->x=p1->y=pn->y,p1->z=pn->z=-1;
     iftMatrix *Nj = iftCreateMatrix(1, 3);
     iftMatrix *DiffCandP0 = iftCreateMatrix(1, 3);
     float NdotNj = 0, DiffShiftDotNj = 0;
+    iftVector v1, v2, v3;
     iftVoxel v; 
 
     for (i = 0; i < 6; i++) {
-      iftMatrixElem(Nj, 0, 0) = vf[i].orthogonal->val[AXIS_X];
-      iftMatrixElem(Nj, 0, 1) = vf[i].orthogonal->val[AXIS_Y];
-      iftMatrixElem(Nj, 0, 2) = vf[i].orthogonal->val[AXIS_Z];
-      
+      iftMatrixElem(Nj, 0, 0) = vf[i].orthogonal->val[0];
+      iftMatrixElem(Nj, 0, 1) = vf[i].orthogonal->val[1];
+      iftMatrixElem(Nj, 0, 2) = vf[i].orthogonal->val[2];
+      v1 = columnVectorMatrixToVector(Nj);
+      v2 = columnVectorMatrixToVector(Tn);
 
+      NdotNj = iftVectorInnerProduct(v1,v2);
 
-      NdotNj = MatrixInnerProduct(Tn,Nj);
+      //NdotNj = MatrixInnerProduct(Tn,Nj);
 
-      iftMatrixElem(DiffCandP0, 0, 0) = vf[i].center->val[AXIS_X] - Tpo->val[AXIS_X];
-      iftMatrixElem(DiffCandP0, 0, 1) = vf[i].center->val[AXIS_Y] - Tpo->val[AXIS_Y];
-      iftMatrixElem(DiffCandP0, 0, 2) = vf[i].center->val[AXIS_Z] - Tpo->val[AXIS_Z];
+      if (NdotNj != 0){
 
-      DiffShiftDotNj = MatrixInnerProduct(DiffCandP0,Nj);
+        iftMatrixElem(DiffCandP0, 0, 0) = vf[i].center->val[0] - Tpo->val[0];
+        iftMatrixElem(DiffCandP0, 0, 1) = vf[i].center->val[1] - Tpo->val[1];
+        iftMatrixElem(DiffCandP0, 0, 2) = vf[i].center->val[2] - Tpo->val[2];
+        
+        v3 = columnVectorMatrixToVector(DiffCandP0);
 
-      lambda[i]=(float) DiffShiftDotNj/NdotNj;
-      //iftPrintMatrix(DiffCandP0);
-      //iftPrintMatrix(Nj);
-      //printf("%f, %f\n", DiffShiftDotNj, NdotNj );
-      
-      //printf("%f\n", lambda[i]);
+        DiffShiftDotNj = iftVectorInnerProduct(v1,v3);
+        //DiffShiftDotNj = MatrixInnerProduct(Nj,DiffCandP0);
+        
+        //if(NdotNj == 0.000000){
+        //  continue;
+        //}
+        
+        lambda[i]=(float) DiffShiftDotNj / NdotNj;
 
-      v.x = ROUND(Tpo->val[AXIS_X] + lambda[i] * Tn->val[AXIS_X]);
-      v.y = ROUND(Tpo->val[AXIS_Y] + lambda[i] * Tn->val[AXIS_Y]);
-      v.z = ROUND(Tpo->val[AXIS_Z] + lambda[i] * Tn->val[AXIS_Z]);
+        v.x = ROUND(Tpo->val[0] + lambda[i] * Tn->val[0]);
+        v.y = ROUND(Tpo->val[1] + lambda[i] * Tn->val[1]);
+        v.z = ROUND(Tpo->val[2] + lambda[i] * Tn->val[2]);
 
-      if (isValidPoint(img, v))
-      {
-
-          if (p1->x == -1){
-              p1->x = v.x;
-              p1->y = v.y;
-              p1->z = v.z;
-          }
-          else {
-              pn->x = v.x;
-              pn->y = v.y;
-              pn->z = v.z;
-          }
+        if (isValidPoint(img, v))
+        {
+            if (lambda[i] < min){
+                p1->x = v.x;
+                p1->y = v.y;
+                p1->z = v.z;
+                min = lambda[i];
+            }
+            else if (lambda[i] > max) {
+                pn->x = v.x;
+                pn->y = v.y;
+                pn->z = v.z;
+                max = lambda[i];
+            }
+        }
       }
-
     }
-  
     
 
   
     iftDestroyMatrix(&Nj);
     iftDestroyMatrix(&DiffCandP0);
-    if ((p1->x != -1) && (pn->z != -1)){
+    
+    if ((p1->x != -1) && (pn->x != -1)){
         return 1;
       }
     else
@@ -272,72 +286,84 @@ iftVolumeFaces* createVF(iftImage* I)
   }
 
   // Face of Plane XY
-  vf[0].orthogonal->val[AXIS_X] = 0;
-  vf[0].orthogonal->val[AXIS_Y] = 0;
-  vf[0].orthogonal->val[AXIS_Z] = -1;
-  vf[0].orthogonal->val[AXIS_H] = 1;
+  vf[0].orthogonal->val[0] = 0;
+  vf[0].orthogonal->val[1] = 0;
+  vf[0].orthogonal->val[2] = -1;
+  vf[0].orthogonal->val[3] = 1;
 
-  vf[0].center->val[AXIS_X] = Nx / 2;
-  vf[0].center->val[AXIS_Y] = Ny / 2;
-  vf[0].center->val[AXIS_Z] = 0;
-  vf[0].center->val[AXIS_H] = 1;
+  vf[0].center->val[0] = Nx / 2;
+  vf[0].center->val[1] = Ny / 2;
+  vf[0].center->val[2] = 0;
+  vf[0].center->val[3] = 1;
 
   // Face of Plane XZ
-  vf[1].orthogonal->val[AXIS_X] = 0;
-  vf[1].orthogonal->val[AXIS_Y] = -1;
-  vf[1].orthogonal->val[AXIS_Z] = 0;
-  vf[1].orthogonal->val[AXIS_H] = 1;
+  vf[1].orthogonal->val[0] = 0;
+  vf[1].orthogonal->val[1] = -1;
+  vf[1].orthogonal->val[2] = 0;
+  vf[1].orthogonal->val[3] = 1;
 
-  vf[1].center->val[AXIS_X] = Nx / 2;
-  vf[1].center->val[AXIS_Y] = 0;
-  vf[1].center->val[AXIS_Z] = Nz / 2;
-  vf[1].center->val[AXIS_H] = 1;
+  vf[1].center->val[0] = Nx / 2;
+  vf[1].center->val[1] = 0;
+  vf[1].center->val[2] = Nz / 2;
+  vf[1].center->val[3] = 1;
 
   // Face of Plane YZ
-  vf[2].orthogonal->val[AXIS_X] = -1;
-  vf[2].orthogonal->val[AXIS_Y] = 0;
-  vf[2].orthogonal->val[AXIS_Z] = 0;
-  vf[2].orthogonal->val[AXIS_H] = 1;
+  vf[2].orthogonal->val[0] = -1;
+  vf[2].orthogonal->val[1] = 0;
+  vf[2].orthogonal->val[2] = 0;
+  vf[2].orthogonal->val[3] = 1;
 
-  vf[2].center->val[AXIS_X] = 0;
-  vf[2].center->val[AXIS_Y] = Ny / 2;
-  vf[2].center->val[AXIS_Z] = Nz / 2;
-  vf[2].center->val[AXIS_H] = 1;
+  vf[2].center->val[0] = 0;
+  vf[2].center->val[1] = Ny / 2;
+  vf[2].center->val[2] = Nz / 2;
+  vf[2].center->val[3] = 1;
 
   // Face of Opposite Plane XY
-  vf[3].orthogonal->val[AXIS_X] = 0;
-  vf[3].orthogonal->val[AXIS_Y] = 0;
-  vf[3].orthogonal->val[AXIS_Z] = 1;
-  vf[3].orthogonal->val[AXIS_H] = 1;
+  vf[3].orthogonal->val[0] = 0;
+  vf[3].orthogonal->val[1] = 0;
+  vf[3].orthogonal->val[2] = 1;
+  vf[3].orthogonal->val[3] = 1;
 
-  vf[3].center->val[AXIS_X] = Nx / 2;
-  vf[3].center->val[AXIS_Y] = Ny / 2;
-  vf[3].center->val[AXIS_Z] = Nz - 1;
-  vf[3].center->val[AXIS_H] = 1;
+  vf[3].center->val[0] = Nx / 2;
+  vf[3].center->val[1] = Ny / 2;
+  vf[3].center->val[2] = Nz - 1;
+  vf[3].center->val[3] = 1;
 
   // Face of Opposite Plane XZ
-  vf[4].orthogonal->val[AXIS_X] = 0;
-  vf[4].orthogonal->val[AXIS_Y] = 1;
-  vf[4].orthogonal->val[AXIS_Z] = 0;
-  vf[4].orthogonal->val[AXIS_H] = 1;
+  vf[4].orthogonal->val[0] = 0;
+  vf[4].orthogonal->val[1] = 1;
+  vf[4].orthogonal->val[2] = 0;
+  vf[4].orthogonal->val[3] = 1;
 
-  vf[4].center->val[AXIS_X] = Nx / 2;
-  vf[4].center->val[AXIS_Y] = Ny - 1;
-  vf[4].center->val[AXIS_Z] = Nz / 2;
-  vf[4].center->val[AXIS_H] = 1;
+  vf[4].center->val[0] = Nx / 2;
+  vf[4].center->val[1] = Ny - 1;
+  vf[4].center->val[2] = Nz / 2;
+  vf[4].center->val[3] = 1;
 
   // Face of Opposite Plane YZ
-  vf[5].orthogonal->val[AXIS_X] = 1;
-  vf[5].orthogonal->val[AXIS_Y] = 0;
-  vf[5].orthogonal->val[AXIS_Z] = 0;
-  vf[5].orthogonal->val[AXIS_H] = 1;
+  vf[5].orthogonal->val[0] = 1;
+  vf[5].orthogonal->val[1] = 0;
+  vf[5].orthogonal->val[2] = 0;
+  vf[5].orthogonal->val[3] = 1;
 
-  vf[5].center->val[AXIS_X] = Nx - 1;
-  vf[5].center->val[AXIS_Y] = Ny / 2;
-  vf[5].center->val[AXIS_Z] = Nz / 2;
-  vf[5].center->val[AXIS_H] = 1;
+  vf[5].center->val[0] = Nx;
+  vf[5].center->val[1] = Ny / 2;
+  vf[5].center->val[2] = Nz / 2;
+  vf[5].center->val[3] = 1;
 
   return vf;
+}
+
+void DestroyVF(iftVolumeFaces *vf)
+{
+    int i;
+    
+    for (i = 0; i < 6; i++)
+    {
+        iftDestroyMatrix(&vf[i].orthogonal);
+        iftDestroyMatrix(&vf[i].center);
+    }
+    free(vf);
 }
 
 
@@ -403,11 +429,6 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 
         if (ComputeIntersection(Tpo, img, Tnorigin, volumeFaces, &p1, &pn))
         {
-            
-            //v1 = GetVoxelCoord(img, p1);
-            //vn = GetVoxelCoord(img, pn);
-
-            //maxIntensity = IntensityProfile(img, v1, vn);
             maxIntensity  = DDA(img,p1,pn);
             //printf("%lf\n", maxIntensity);
 
@@ -425,8 +446,7 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
     iftDestroyMatrix(&T);
     iftDestroyMatrix(&Norigin);
     iftDestroyMatrix(&Tnorigin);
-    //iftDestroyMatrix(&Tn);
-    //DestroyVolumeFaces(volumeFaces);
+    DestroyVF(volumeFaces);
 
     return output;
 }
@@ -450,8 +470,9 @@ int main(int argc, char *argv[])
 
     output = MaximumIntensityProjection(img, tx, ty);
     sprintf(buffer, "data/%.1f%.1f%s", tx, ty, argv[2]);
+    iftImage *normalizedImage= iftNormalize(output,0,255);
 
-    iftWriteImageByExt(output, buffer);
+    iftWriteImageByExt(normalizedImage, buffer);
     iftDestroyImage(&img);
     iftDestroyImage(&output);
     return 0;
