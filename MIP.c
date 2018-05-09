@@ -25,6 +25,17 @@ typedef struct volume
     iftMatrix* center;
 }iftVolumeFaces;
 
+int isValidPoint(iftImage *img, iftVoxel u)
+{
+    if ((u.x >= 0) && (u.x < img->xsize) &&
+        (u.y >= 0) && (u.y < img->ysize) &&
+        (u.z >= 0) && (u.z < img->zsize)){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
 
 float MatrixInnerProduct(iftMatrix *A, iftMatrix *B)
 {
@@ -116,11 +127,12 @@ int DDA(iftImage *img, iftVoxel p1, iftVoxel pn)
         //printf("debug\n");
         //J+=  (float)LinearInterpolationValue(img, px, py);
         //J+=  iftImgVal2D(img, (int)px, (int)py);
-        J= VoxelValue(img,p);
-        
-        if (J>max)
-          max=J;
-        //J+=  (float)LinearInterpolationValue(img, px, py);
+        if (isValidPoint(img,p)){
+          J= iftImgVal(img,p.x,p.y,p.z);
+          
+          if (J>max)
+            max=J;
+        }
 
         p.x = p.x + dx;
         p.y = p.y + dy;
@@ -131,17 +143,7 @@ int DDA(iftImage *img, iftVoxel p1, iftVoxel pn)
 }
 
 
-int isValidPoint(iftImage *img, iftVoxel u)
-{
-    if ((u.x >= 0) && (u.x < img->xsize) &&
-        (u.y >= 0) && (u.y < img->ysize) &&
-        (u.z >= 0) && (u.z < img->zsize)){
-        return 1;
-    }
-    else{
-        return 0;
-    }
-}
+
 
 iftVector columnVectorMatrixToVector(iftMatrix *m)
 {
@@ -158,7 +160,7 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
 {
 
     float lambda[6] = { -1};
-    float min=9999999.0, max=0.0;
+    float max=-9999999.9, min=9999999.9;
     int i;
     p1->x=pn->x=p1->y=pn->y,p1->z=pn->z=-1;
     iftMatrix *Nj = iftCreateMatrix(1, 3);
@@ -194,6 +196,7 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
         //}
         
         lambda[i]=(float) DiffShiftDotNj / NdotNj;
+        
 
         v.x = ROUND(Tpo->val[0] + lambda[i] * Tn->val[0]);
         v.y = ROUND(Tpo->val[1] + lambda[i] * Tn->val[1]);
@@ -207,7 +210,7 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
                 p1->z = v.z;
                 min = lambda[i];
             }
-            else if (lambda[i] > max) {
+            if (lambda[i] > max) {
                 pn->x = v.x;
                 pn->y = v.y;
                 pn->z = v.z;
@@ -221,7 +224,8 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
   
     iftDestroyMatrix(&Nj);
     iftDestroyMatrix(&DiffCandP0);
-    
+
+
     if ((p1->x != -1) && (pn->x != -1)){
         return 1;
       }
@@ -393,7 +397,7 @@ iftMatrix *imagePixelToMatrix(iftImage *img, int p)
 
 iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 {
-    int diagonal = 0;
+    float diagonal = 0;
     double maxIntensity;
     int p=0;
     int Nu, Nv;
@@ -404,7 +408,7 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
     iftMatrix *Norigin, *Tnorigin;
     iftMatrix *Tpo;
 
-    diagonal = (int)sqrt((double) (img->xsize * img->xsize) + (img->ysize * img->ysize) + (img->zsize * img->zsize));
+    diagonal = sqrt((img->xsize * img->xsize) + (img->ysize * img->ysize) + (img->zsize * img->zsize));
     Nu = Nv = diagonal;
     iftImage *output = iftCreateImage(Nu, Nv, 1);
     T  = createTransformationMatrix(img, xtheta, ytheta);
@@ -413,8 +417,8 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
     Norigin =  iftCreateMatrix(1, 4);
     iftMatrixElem(Norigin, 0, 0) = 0;
     iftMatrixElem(Norigin, 0, 1) = 0;
-    iftMatrixElem(Norigin, 0, 2) = 1;
-    iftMatrixElem(Norigin, 0, 3) = 1;
+    iftMatrixElem(Norigin, 0, 2) = -1;
+    iftMatrixElem(Norigin, 0, 3) = 0;
     //iftPrintMatrix(Norigin);
 
     Tnorigin = iftMultMatrices(T, Norigin);
@@ -424,6 +428,8 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
     for (p = 0; p < output->n; p++)
     {
         Mtemp = imagePixelToMatrix(output,p);
+        iftMatrixElem(Mtemp, 0, 2) = diagonal/2;
+
         
         Tpo = iftMultMatrices(T, Mtemp);
 
@@ -434,10 +440,7 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 
             output->val[p] = maxIntensity;
         }
-        else{
-
-            output->val[p] = 0;
-        }
+        
 
         iftDestroyMatrix(&Mtemp);
         iftDestroyMatrix(&Tpo);
