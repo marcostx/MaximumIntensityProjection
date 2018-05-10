@@ -128,7 +128,15 @@ int DDA(iftImage *img, iftVoxel p1, iftVoxel pn)
         //J+=  (float)LinearInterpolationValue(img, px, py);
         //J+=  iftImgVal2D(img, (int)px, (int)py);
         if (isValidPoint(img,p)){
-          J= iftImgVal(img,p.x,p.y,p.z);
+          //J= iftImgVal(img,p.x,p.y,p.z);
+
+          iftPoint aux;
+          aux.x = p.x;
+          aux.y = p.y;
+          aux.z = p.z;
+
+          // pegando o ponto com interpolacao
+          J= iftImageValueAtPoint(img,aux);
           
           if (J>max)
             max=J;
