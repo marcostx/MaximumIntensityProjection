@@ -169,6 +169,7 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
     iftVector v1, v2, v3;
     iftVoxel v; 
 
+
     for (i = 0; i < 6; i++) {
       iftMatrixElem(Nj, 0, 0) = vf[i].orthogonal->val[0];
       iftMatrixElem(Nj, 0, 1) = vf[i].orthogonal->val[1];
@@ -198,39 +199,36 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
         lambda[i]=(float) DiffShiftDotNj / NdotNj;
         
 
-        v.x = ROUND(Tpo->val[0] + lambda[i] * Tn->val[0]);
-        v.y = ROUND(Tpo->val[1] + lambda[i] * Tn->val[1]);
-        v.z = ROUND(Tpo->val[2] + lambda[i] * Tn->val[2]);
+        v.x = Tpo->val[0] + lambda[i] * Tn->val[0];
+        v.y = Tpo->val[1] + lambda[i] * Tn->val[1];
+        v.z = Tpo->val[2] + lambda[i] * Tn->val[2];
 
         if (isValidPoint(img, v))
         {
-            if (lambda[i] < min){
-                p1->x = v.x;
-                p1->y = v.y;
-                p1->z = v.z;
-                min = lambda[i];
-            }
-            if (lambda[i] > max) {
-                pn->x = v.x;
-                pn->y = v.y;
-                pn->z = v.z;
-                max = lambda[i];
-            }
+          if (lambda[i] < min){
+              p1->x = v.x;
+              p1->y = v.y;
+              p1->z = v.z;
+              min = lambda[i];
+          }
+          if (lambda[i] > max) {
+              pn->x = v.x;
+              pn->y = v.y;
+              pn->z = v.z;
+              max = lambda[i];
+          }
         }
       }
     }
     
-
-  
     iftDestroyMatrix(&Nj);
     iftDestroyMatrix(&DiffCandP0);
 
 
-    if ((p1->x != -1) && (pn->x != -1)){
-        return 1;
-      }
+    if ((p1->x != -1) && (pn->x != -1))   
+      return 1;
     else
-        return 0;
+      return 0;
 }
 
 
@@ -350,7 +348,7 @@ iftVolumeFaces* createVF(iftImage* I)
   vf[5].orthogonal->val[2] = 0;
   vf[5].orthogonal->val[3] = 1;
 
-  vf[5].center->val[0] = Nx;
+  vf[5].center->val[0] = Nx-1;
   vf[5].center->val[1] = Ny / 2;
   vf[5].center->val[2] = Nz / 2;
   vf[5].center->val[3] = 1;
@@ -430,13 +428,13 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
         Mtemp = imagePixelToMatrix(output,p);
         iftMatrixElem(Mtemp, 0, 2) = diagonal/2;
 
+
         
         Tpo = iftMultMatrices(T, Mtemp);
 
         if (ComputeIntersection(Tpo, img, Tnorigin, volumeFaces, &p1, &pn))
         {
             maxIntensity  = DDA(img,p1,pn);
-            //printf("%lf\n", maxIntensity);
 
             output->val[p] = maxIntensity;
         }
