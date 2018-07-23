@@ -137,7 +137,7 @@ int DDA(iftImage *img, iftVoxel p1, iftVoxel pn)
 
           // pegando o ponto com interpolacao
           J= iftImageValueAtPoint(img,aux);
-          
+
           if (J>max)
             max=J;
         }
@@ -175,7 +175,7 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
     iftMatrix *DiffCandP0 = iftCreateMatrix(1, 3);
     float NdotNj = 0, DiffShiftDotNj = 0;
     iftVector v1, v2, v3;
-    iftVoxel v; 
+    iftVoxel v;
 
 
     for (i = 0; i < 6; i++) {
@@ -194,18 +194,20 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
         iftMatrixElem(DiffCandP0, 0, 0) = vf[i].center->val[0] - Tpo->val[0];
         iftMatrixElem(DiffCandP0, 0, 1) = vf[i].center->val[1] - Tpo->val[1];
         iftMatrixElem(DiffCandP0, 0, 2) = vf[i].center->val[2] - Tpo->val[2];
-        
+        //iftPrintMatrix(DiffCandP0);
+
+
         v3 = columnVectorMatrixToVector(DiffCandP0);
 
         DiffShiftDotNj = iftVectorInnerProduct(v1,v3);
         //DiffShiftDotNj = MatrixInnerProduct(Nj,DiffCandP0);
-        
+
         //if(NdotNj == 0.000000){
         //  continue;
         //}
-        
+
         lambda[i]=(float) DiffShiftDotNj / NdotNj;
-        
+
 
         v.x = Tpo->val[0] + lambda[i] * Tn->val[0];
         v.y = Tpo->val[1] + lambda[i] * Tn->val[1];
@@ -228,57 +230,19 @@ int ComputeIntersection(iftMatrix *Tpo, iftImage *img, iftMatrix *Tn, iftVolumeF
         }
       }
     }
-    
+
     iftDestroyMatrix(&Nj);
     iftDestroyMatrix(&DiffCandP0);
 
 
-    if ((p1->x != -1) && (pn->x != -1))   
+    if ((p1->x != -1) && (pn->x != -1)){
       return 1;
+    }
     else
       return 0;
 }
 
 
-
-int LinearInterpolationValue(iftImage *img, float x, float y, float z)
-{
-    iftVoxel u[8];
-    float dx = 1.0;
-    float dy = 1.0;
-    float dz = 1.0;
-    float  P12, P34, P56, P78;
-    float aux1, aux2;
-    int Pi;
-
-    if ((int) (x + 1.0) == img->xsize)
-        dx = 0.0;
-    if ((int) (y + 1.0) == img->ysize)
-        dy = 0.0;
-    if ((int) (z + 1.0) == img->zsize)
-        dz = 0.0;
-
-    //closest neighbour in each direction
-    u[0].x = (int)x;        u[0].y = (int)y;          u[0].z = (int)z;
-    u[1].x = (int)(x + dx); u[1].y = (int)y;          u[1].z = (int)z;
-    u[2].x = (int)x;        u[2].y = (int)(y + dy);   u[2].z = (int)z;
-    u[3].x = (int)(x + dx); u[3].y = (int)(y + dy);   u[3].z = (int)z;
-    u[4].x = (int)x;        u[4].y = (int)y;          u[4].z = (int)(z + dz);
-    u[5].x = (int)(x + dx); u[5].y = (int)y;          u[5].z = (int)(z + dz);
-    u[6].x = (int)x;        u[6].y = (int)(y + dy);   u[6].z = (int)(z + dz);
-    u[7].x = (int)(x + dx); u[7].y = (int)(y + dy);   u[7].z = (int)(z + dz);
-
-
-    P12 = (float)iftImgVal2D(img,u[1].x,u[1].y) * (x - u[0].x) + (float)iftImgVal2D(img,u[0].x,u[0].y) * (u[1].x - x);
-    P34 = (float)iftImgVal2D(img,u[3].x,u[3].y) * (x - u[2].x) + (float)iftImgVal2D(img,u[2].x,u[2].y) * (u[3].x - x);
-    P56 = (float)iftImgVal2D(img,u[5].x,u[5].y) * (x - u[4].x) + (float)iftImgVal2D(img,u[4].x,u[4].y) * (u[5].x - x);
-    P78 = (float)iftImgVal2D(img,u[7].x,u[7].y) * (x - u[6].x) + (float)iftImgVal2D(img,u[6].x,u[6].y) * (u[7].x - x);
-    aux1 = P34 *  (y - u[0].y) + P12 * (u[2].y - y);
-    aux2 = P56 * (y - u[0].y) + P78 * (u[2].y - y);
-    Pi  = (int)aux2 * (z - u[0].z) + aux1 * (u[4].z - z);
-
-    return Pi;
-}
 
 iftVolumeFaces* createVF(iftImage* I)
 {
@@ -367,7 +331,7 @@ iftVolumeFaces* createVF(iftImage* I)
 void DestroyVF(iftVolumeFaces *vf)
 {
     int i;
-    
+
     for (i = 0; i < 6; i++)
     {
         iftDestroyMatrix(&vf[i].orthogonal);
@@ -408,7 +372,7 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
     int p=0;
     int Nu, Nv;
     iftVoxel p1, pn;
-    
+
     iftVolumeFaces* volumeFaces;
     iftMatrix *Mtemp, *T;
     iftMatrix *Norigin, *Tnorigin;
@@ -431,13 +395,13 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 
     volumeFaces = createVF(img);
 
+
     for (p = 0; p < output->n; p++)
     {
+        printf("Step : %d\n", p);
         Mtemp = imagePixelToMatrix(output,p);
         iftMatrixElem(Mtemp, 0, 2) = diagonal/2;
 
-
-        
         Tpo = iftMultMatrices(T, Mtemp);
 
         if (ComputeIntersection(Tpo, img, Tnorigin, volumeFaces, &p1, &pn))
@@ -446,7 +410,7 @@ iftImage *MaximumIntensityProjection(iftImage *img, float xtheta, float ytheta)
 
             output->val[p] = maxIntensity;
         }
-        
+
 
         iftDestroyMatrix(&Mtemp);
         iftDestroyMatrix(&Tpo);
@@ -474,7 +438,7 @@ int main(int argc, char *argv[])
     //tz = atof(argv[5]);
     char *imgFileName = iftCopyString(argv[1]);
     iftImage *img = iftReadImageByExt(imgFileName);
-  
+
     iftImage *output = NULL;
 
     output = MaximumIntensityProjection(img, tx, ty);
